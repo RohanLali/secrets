@@ -36,7 +36,9 @@ mongoose.connect("mongodb://127.0.0.1:27017/userDB",{useNewUrlParser: true});
 
 const userSchema = new mongoose.Schema({
     email: String,
-    password: String
+    password: String,
+    googleId: String,
+    secret: String
 });
 
 userSchema.plugin(passportlocalmongoose);
@@ -56,13 +58,18 @@ passport.serializeUser(function(user,done){
     done(null,user.id);
 });
 
+// const err1;
 passport.deserializeUser(function(id,done){
     // User.findById(id,function(err,user){
     //     done(err,user);
     // })
+    
     User.findById(id)
+    // .catch(err=>{
+    //     err1=err
+    // })
     .then(result=>{
-        done(err,result);
+        done(null,result);
     })
     
 });
@@ -103,6 +110,7 @@ app.get("/register", function(req,res){
 })
 
 app.get("/secrets", function(req,res){
+    /*
     if(req.isAuthenticated()){
         res.render("secrets");
         console.log("authenticated");
@@ -110,7 +118,23 @@ app.get("/secrets", function(req,res){
     else{
         res.send("not authenticated");
     }
+    */
+   User.find({"secret":{$ne: null}})
+   .then(result=>{
+    if(result){
+        res.render("secrets",{userwithsecrets: result});
+    }
+   })
 })
+
+app.get("/submit",function(req,res){
+    if(req.isAuthenticated()){
+        res.render("submit");
+    }
+    else{
+        res.redirect("/login");
+    }
+});
 
 app.get("/logout",function(req,res){
     req.logout(function(err) {
@@ -150,6 +174,22 @@ app.post("/register",function(req,res){
     })
 });
 
+app.post("/submit",function(req,res){
+    const secretgiven = req.body.secret;
+    User.findById(req.user.id)
+    .then(result=>{
+        if(result){
+            result.secret = secretgiven;
+            result.save()
+            .then(result=>{
+                res.redirect("/secrets");
+            })
+        }
+    })
+    .catch(err=>{
+        console.log(err);
+    })
+});
 
 app.post("/login",function(req,res){
     /*
